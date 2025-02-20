@@ -45,12 +45,12 @@ async def analyze_resume(file: UploadFile = File(...)):
             "message": str(e)
         }
 
-def main():
+if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")
     uvicorn.run(
         "main:app",
         host=host,
         port=port,
-        reload=False 
+        reload=False  # Disable reload in production
     )
