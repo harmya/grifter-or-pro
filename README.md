@@ -2,7 +2,7 @@
 
 Ever wondered if the stuff people put on their resume is actually true?
 
-Especially when they put coding projects that they say they made with grandiose descriptions?
+Especially when they put coding projects with grandiose descriptions?
 
 Well, lets find out.
 
