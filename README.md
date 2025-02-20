@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+### Grifter or Pro?
 
-## Getting Started
+Ever wondered if the stuff people put on their resume is actually true?
 
-First, run the development server:
+Especially when they put coding projects that they say they made with grandiose descriptions?
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Well, lets find out.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Work in progress
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This is a work in progress and I will be adding more features to it.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+For now, I have implemented a basic resume parser that can parse the resume and extract the information.
+I have also implemented a basic GitHub repo verifier that can verify the GitHub repos and check if the projects are actually real.
+After that, I randomly sample files from the GitHub repos and use a LLM to analyze the code and the project description and give a "grift" rating.
 
-## Learn More
+Example:
 
-To learn more about Next.js, take a look at the following resources:
+I put this on my resume: "Created a self-driving car system that learns to navigate through traffic using a neural network to process sensory input and make decisions using JavaScript, HTML and CSS"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Now, after running the verifier, my review is:
+"Oh, sweet code of mine, what have we here? A self-driving car system that sounds like it was designed by someone who thinks "neural network" is just a fancy term for a group chat!
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Let’s dive into the code, shall we? First off, your project description is like a toddler claiming they can cook a five-course meal because they microwaved a Hot Pocket. You’re not exactly building Skynet here; you’re just trying to avoid a fender bender with some polygons."
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Kinda funny, hopefully I don't lose interest in this before I finish the web app.
