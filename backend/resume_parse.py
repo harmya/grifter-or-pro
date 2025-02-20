@@ -1,25 +1,28 @@
 import PyPDF2
 import docx
-from pathlib import Path
 from typing import Dict, Optional
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+import io
 
 load_dotenv()
 
 class ResumeParser:
-    def __init__(self, file_path: str, api_key: Optional[str] = None):
-        self.file_path = Path(file_path)
+    def __init__(self, file_contents: bytes, filename: str, api_key: Optional[str] = None):
+        self.file_contents = file_contents
+        self.filename = filename
         self.content = self._read_file()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.client = OpenAI(api_key=self.api_key)
 
     def _read_file(self) -> str:
         """Read content from PDF or DOCX file."""
-        if self.file_path.suffix.lower() == '.pdf':
+        file_extension = os.path.splitext(self.filename)[1].lower()
+        
+        if file_extension == '.pdf':
             return self._read_pdf()
-        elif self.file_path.suffix.lower() in ['.docx', '.doc']:
+        elif file_extension in ['.docx', '.doc']:
             return self._read_docx()
         else:
             raise ValueError("Unsupported file format. Please provide PDF or DOCX file.")
@@ -27,27 +30,30 @@ class ResumeParser:
     def _read_pdf(self) -> str:
         """Extract text and embedded links from PDF file."""
         extracted_text = []
-        with open(self.file_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file)
-            for page in reader.pages:
-                text = page.extract_text()
-                links = []
-                if "/Annots" in page:
-                    for annot in page["/Annots"]:
-                        annot_obj = annot.get_object()
-                        if annot_obj.get("/Subtype") == "/Link" and annot_obj.get("/A"):
-                            uri = annot_obj["/A"].get("/URI")
-                            if uri:
-                                links.append(uri)
-                page_content = text if text else ""
-                if links:
-                    page_content += " \nLinks: " + ", ".join(links)
-                extracted_text.append(page_content)
+        pdf_file = io.BytesIO(self.file_contents)
+        
+        reader = PyPDF2.PdfReader(pdf_file)
+        for page in reader.pages:
+            text = page.extract_text()
+            links = []
+            if "/Annots" in page:
+                for annot in page["/Annots"]:
+                    annot_obj = annot.get_object()
+                    if annot_obj.get("/Subtype") == "/Link" and annot_obj.get("/A"):
+                        uri = annot_obj["/A"].get("/URI")
+                        if uri:
+                            links.append(uri)
+            page_content = text if text else ""
+            if links:
+                page_content += " \nLinks: " + ", ".join(links)
+            extracted_text.append(page_content)
         return ' '.join(extracted_text)
 
     def _read_docx(self) -> str:
         """Extract text and embedded links from DOCX file."""
-        doc = docx.Document(self.file_path)
+        docx_file = io.BytesIO(self.file_contents)
+        doc = docx.Document(docx_file)
+        
         extracted_text = []
         for paragraph in doc.paragraphs:
             text = paragraph.text
@@ -109,11 +115,10 @@ class ResumeParser:
         
         return {"analysis": completion.choices[0].message.content}
 
-
-def get_analysis(file_path: str, api_key: Optional[str] = None) -> None:
-    """Main function to parse and analyze resume."""
+def parse_resume(file_contents: bytes, filename: str, api_key: Optional[str] = None) -> str:
+    """Function to parse and analyze resume."""
     try:
-        parser = ResumeParser(file_path, api_key)
+        parser = ResumeParser(file_contents, filename, api_key)
         results = parser.analyze_resume()
         return results["analysis"]
     except Exception as e:
