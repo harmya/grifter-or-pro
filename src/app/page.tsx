@@ -72,10 +72,13 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("http://localhost:8000/api/analyze-resume", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        "https://grifter-or-pro.onrender.com/api/analyze-resume",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       const data: ApiResponse = await response.json();
 
