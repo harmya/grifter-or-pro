@@ -1,14 +1,10 @@
-### Grifter or Pro?
+### Grifter or Pro? (WIP)
 
 Ever wondered if the stuff people put on their resume is actually true?
 
 Especially when they put coding projects that they say they made with grandiose descriptions?
 
 Well, lets find out.
-
-### Work in progress
-
-This is a work in progress and I will be adding more features to it.
 
 For now, I have implemented a basic resume parser that can parse the resume and extract the information.
 I have also implemented a basic GitHub repo verifier that can verify the GitHub repos and check if the projects are actually real.
