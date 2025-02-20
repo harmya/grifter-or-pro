@@ -160,7 +160,7 @@ def main():
     verifier = GitHubProjectVerifier(github_token, openai_api_key)
 
     # Get resume analysis
-    resume_path = "guh.pdf"
+    resume_path = "shrini.pdf"
     analysis = get_analysis(resume_path)
     print("\nResume Analysis:")
     print(analysis)
