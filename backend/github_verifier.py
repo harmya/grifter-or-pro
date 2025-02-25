@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import requests
 import base64
@@ -6,6 +7,9 @@ import random
 import os
 from openai import OpenAI
 from urllib.parse import urlparse
+from objects import GitHubProject, ParsedResumeResponse
+
+
 
 class GitHubProjectVerifier:
     def __init__(self, github_token: str, openai_api_key: str):
@@ -136,42 +140,42 @@ class GitHubProjectVerifier:
         ])
 
         messages = [
-            {"role": "system", "content": """
-            You are FunnyCodeReviewer, a hilarious and brutally honest code analyst who loves roasting projects of people who pretend to be good at coding.
-            while still providing accurate technical analysis. Your personality:
-            - You're like a combination of Shane Gillis, Gordon Ramsay and Joe Rogan and a senior developer who's seen it all
-            - You use humor and creative metaphors to describe code quality
-            - You're not afraid to playfully roast obvious issues or overblown project descriptions
-            - Despite the sass, you actually provide useful technical insights
-            
-            Analysis style:
-            1. Start with a sarcastic opening line about the project
-            2. Point out suspicious claims made by the project description
-            3. Use creative and funny metaphors to describe the code quality
-            5. End with a brutally honest but fair verdict
-             
-            Also, change up the analysis style based on the code samples, if the code samples are not good, make fun of the project description.
-            
-            Remember: Keep it funny but technically accurate."""},
-            {"role": "user", "content": f"""
-            Project Description: {project_description}
-            
-            Code Samples:
-            {code_context}
-            
-            
-            End your analysis with a Grift Rating out of 10 where 10 is think of someone who is a grifter and a liar 
-            and 1 is someone who is actually a great engineer, feel free to use real life examples.
+    {"role": "system", "content": """
+    You are FunnyCodeReviewer, a hilarious and brutally honest code analyst who's spent decades in the trenches of software development.
+    Your personality combines technical precision with withering sarcasm:
+    - You're like a senior developer with perfect comic timing who can spot BS from a mile away
+    - You use programming language-specific jokes that demonstrate genuine expertise
+    - Your comedy exposes the gap between what developers claim and what their code actually does
+    - You're brutal but fair - your technical analysis is always impeccable
+    
 
-            Feel free to be mean and sarcastic. Give AT MOST  250 words. Only show code snippets that you are roasting.
-            """}
-        ]
+    A joke that references a legitimate technical concept in the code
+    Compare specific claims in the project description to actual implementation
+    Create metaphors that are both funny AND technically relevant
+    Include 1-2 actual code improvements that demonstrate your expertise
+    End with your "Grift Rating" comparing to a real-world tech personality/company
+    
+    Remember: Your humor should reveal technical understanding, not mask its absence. Only mock code patterns 
+    that genuinely violate best practices (SOLID, DRY, etc.) and reference real language-specific pitfalls."""},
+    {"role": "user", "content": f"""
+    Project Description: {project_description}  
+    
+    Code Samples:
+    {code_context}
+    
+    
+    End your analysis with a Grift Rating out of 10 where 10 is a complete tech charlatan
+    and 1 is a genuinely brilliant engineer. Compare to a real-world example.
+
+    Be brutally honest but technically accurate. Only show code snippets that deserve roasting. Keep it short and concise under 350 words.
+    """}
+]
 
         completion = self.openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
-            temperature=0.1,
-            max_tokens=250
+            temperature=0.3,
+            max_tokens=500
         )
 
         analysis = completion.choices[0].message.content
@@ -185,44 +189,41 @@ class GitHubProjectVerifier:
             'samples': sample_links
         }
 
-def get_github_project_analysis(analysis: str, github_token: str, openai_api_key: str):
+def get_github_project_analysis(analysis: ParsedResumeResponse, github_token: str, openai_api_key: str):
     verifier = GitHubProjectVerifier(github_token, openai_api_key)
-
     # Parse GitHub projects from analysis
-    lines = analysis.split('\n')
     projects = []
-    capturing_projects = False
-
-    for line in lines:
-        if line.strip().startswith('Projects:'):
-            capturing_projects = True
-        elif capturing_projects and line.strip().startswith('-'):
-            project_info = line.strip('- ').split('|')
-            if len(project_info) >= 2:
-                projects.append({
-                    'name': project_info[0].strip(),
-                    'url': project_info[1].strip(),
-                    'description': project_info[2].strip() if len(project_info) > 2 else ''
-                })
+    print("ANALYSIS")
+    print(analysis)
     
+    for project in analysis.projects:
+        project = GitHubProject(project.name, project.url, project.description)
+        projects.append(project)
+
+    print("PROJECTS")
+    print(projects) 
+
     analysis = {
         'projects': []
     }
 
+    print("PROJECTS")
+    print(projects)
+
     for project in projects:
         curr_project = {
-            'name': project['name'],
+            'name': project.name,
             'analysis': [],
             'code_samples': [] 
         }
-        owner, repo = verifier.extract_repo_info(project['url'])
+        owner, repo = verifier.extract_repo_info(project.url)
         if owner and repo:
             code_samples = verifier.get_relevant_code_sample(owner, repo)
-            verification = verifier.verify_project(project['description'], code_samples)
+            verification = verifier.verify_project(project.description, code_samples)
             curr_project['analysis'].append(verification['analysis'])
             curr_project['code_samples'] = verification['samples']
         else:
-            print(f"Could not parse GitHub URL: {project['url']}")
+            print(f"Could not parse GitHub URL: {project.url}")
         analysis['projects'].append(curr_project)
 
     # convert to json string

@@ -1,3 +1,4 @@
+import json
 import PyPDF2
 import docx
 from typing import Dict, Optional
@@ -47,6 +48,7 @@ class ResumeParser:
             if links:
                 page_content += " \nLinks: " + ", ".join(links)
             extracted_text.append(page_content)
+
         return ' '.join(extracted_text)
 
     def _read_docx(self) -> str:
@@ -67,45 +69,43 @@ class ResumeParser:
         return ' '.join(extracted_text)
 
     def analyze_resume(self) -> Dict:
-        """Send resume content to OpenAI API for analysis."""
         messages = [
-            {"role": "system", "content": """
-                You are ResumeExtractor-Pro, a focused and efficient resume analyzer. Your primary mission is to extract and verify the following key information:
-                
-                Required Information:
-                1. GitHub Presence:
-                   - GitHub username
-                   - GitHub profile URL
-                   - Project repository links
-                   - Project names
-                   - Short description of the project as stated on the resume
-
-                3. Ultra-Brief Experience Summary:
-                   - Most recent/relevant position
-                   - Company
-                   - Short description of the work
-                
-                Output Format:
-                GITHUB INFO
-                Username: {if found}
-                Profile: {if found}
-                Projects: 
-                - {project name} | {link} {if available} | {short description of the project as stated on the resume}
-             
-                EXPERIENCE
-                {brief experience summary}
-             
-                Guidelines:
-                - Extract ANY GitHub information found
-                - Also, extract everything you can find about the user's projects
-                - Keep summaries concise
-                - Don't speculate or fill in missing information"""},
-            {"role": "user", "content": f"""Please analyze this resume and extract the required information:
-                
-                {self.content}
-            """}
+    {"role": "system", "content": """
+    You are ProjectExtractor, a specialized resume analyzer that focuses exclusively on extracting non-work-related projects.
+    
+    Your only task is to find and extract:
+    1. All personal/side projects mentioned on the resume (NOT work experience projects)
+    2. Their GitHub links (or other repository links)
+    3. Their descriptions as stated on the resume
+    4. The GitHub username of the user
+    
+    Output Format:
+    You must output ONLY a valid JSON object with this exact structure:
+    {
+        "found_all_links": boolean, // true if you found links for all projects, false otherwise
+        "github_username": "GitHub username" // empty string if not found
+        "projects": [
+            {
+                "name": "Project Name",
+                "description": "Project description from resume",
+                "url": "GitHub or repository link" // empty string if not found
+            }
         ]
-        
+    }
+    
+    Guidelines:
+    - Only include personal/side projects (not work-related projects)
+    - Don't invent or assume any information not present in the resume
+    - If a project has no link, include it with an empty string for the link
+    - Return a complete, valid JSON - nothing else
+    """},
+    {"role": "user", "content": f"""
+    Please extract all non-work-related projects, their GitHub links, and descriptions from this resume:
+    
+    {self.content}
+    """}
+]
+
         completion = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
@@ -115,11 +115,14 @@ class ResumeParser:
         
         return {"analysis": completion.choices[0].message.content}
 
+def parse_json(json_str: str) -> Dict:
+    return json.loads(json_str)
+
 def parse_resume(file_contents: bytes, filename: str, api_key: Optional[str] = None) -> str:
     """Function to parse and analyze resume."""
     try:
         parser = ResumeParser(file_contents, filename, api_key)
         results = parser.analyze_resume()
-        return results["analysis"]
+        return parse_json(results["analysis"])
     except Exception as e:
         print(f"Error processing resume: {str(e)}")

@@ -1,7 +1,9 @@
 # backend/main.py
+from dataclasses import dataclass
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from objects import ParsedResumeResponse
 from github_verifier import get_github_project_analysis
 from resume_parse import parse_resume
 import uvicorn
@@ -19,7 +21,9 @@ app.add_middleware(
         "http://grifter.pro",
         "https://grifter.pro",
         "https://www.grifter.pro",
-        "http://www.grifter.pro"
+        "http://www.grifter.pro", 
+        "http://localhost:3000",
+        "https://localhost:3000"
     ],  
     allow_credentials=True,
     allow_methods=["POST"], 
@@ -27,16 +31,27 @@ app.add_middleware(
 )
 
 
-@app.post("/api/analyze-resume")
+@app.post("/api/get-parsed-resume")
 async def analyze_resume(file: UploadFile = File(...)):
+    contents = await file.read()
+    parsed_resume = parse_resume(contents, file.filename, OPENAI_API_KEY)
+    await file.close()
+    return parsed_resume
+
+@app.post("/api/analyze-resume")
+async def analyze_resume(data: ParsedResumeResponse):
     try:   
-        contents = await file.read()
-        parsed_resume = parse_resume(contents, file.filename, OPENAI_API_KEY)
-        await file.close()
-        analysis = get_github_project_analysis(parsed_resume, GITHUB_TOKEN, OPENAI_API_KEY)        
+        if data.found_all_links:
+            analysis = get_github_project_analysis(data, GITHUB_TOKEN, OPENAI_API_KEY)     
+        else:
+            analysis = {
+                "name": "None",
+                "analysis": "Could not find all links", 
+                "code_samples": []
+            }
+
         return {
             "status": "success",
-            "filename": file.filename,
             "analysis": analysis
         }
     except Exception as e:
