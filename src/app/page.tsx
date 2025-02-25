@@ -1,18 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Upload, RefreshCw, CheckCircle } from "lucide-react";
+import { Upload, RefreshCw } from "lucide-react";
 import ProjectAnalysisDisplay from "./analysis";
 
-const is_local = true;
+const is_local = false;
 
 const resumeAnalysisUrl = is_local
   ? "http://localhost:8000/api/analyze-resume"
   : "https://grifter-or-pro.onrender.com/api/analyze-resume";
-
-const githubUrl = is_local
-  ? "http://localhost:8000/api/get-github-link"
-  : "https://grifter-or-pro.onrender.com/api/get-github-link";
 
 const parsedResumeUrl = is_local
   ? "http://localhost:8000/api/get-parsed-resume"
@@ -42,11 +38,7 @@ export default function Home() {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [analysis, setAnalysis] = useState("");
   const [error, setError] = useState("");
-  const [foundAllLinks, setFoundAllLinks] = useState(false);
-  const [githubUsername, setGithubUsername] = useState("");
-  const [projects, setProjects] = useState<Project[]>([]);
   const [showNoLinksMessage, setShowNoLinksMessage] = useState(false);
-  const [showDoneMessage, setShowDoneMessage] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -84,12 +76,10 @@ export default function Home() {
     setAnalysis("");
     setError("");
     setShowNoLinksMessage(false);
-    setShowDoneMessage(false);
   };
 
   const parseResume = async (file: File) => {
     try {
-      setShowDoneMessage(false);
       setLoading(true);
       setLoadingMessage("Analyzing resume...");
       setError("");
@@ -105,10 +95,6 @@ export default function Home() {
 
       const data: ParsedResumeResponse = await response.json();
 
-      setFoundAllLinks(data.found_all_links);
-      setGithubUsername(data.github_username);
-      setProjects(data.projects || []);
-
       if (!data.found_all_links) {
         setShowNoLinksMessage(true);
         setLoading(true);
@@ -118,12 +104,6 @@ export default function Home() {
           const analysis = await analyzeResume(data);
           setAnalysis(analysis?.analysis || "Error analyzing resume");
           setLoading(false);
-          // Show done message after loading completes
-          setShowDoneMessage(true);
-          // Hide done message after 3 seconds
-          setTimeout(() => {
-            setShowDoneMessage(false);
-          }, 3000);
         } else {
           setLoadingMessage("No GitHub username found, maybe next time");
           setLoading(false);
@@ -134,12 +114,6 @@ export default function Home() {
         const analysis = await analyzeResume(data);
         setAnalysis(analysis?.analysis || "Error analyzing resume");
         setLoading(false);
-        // Show done message after loading completes
-        setShowDoneMessage(true);
-        // Hide done message after 3 seconds
-        setTimeout(() => {
-          setShowDoneMessage(false);
-        }, 3000);
       }
     } catch (err) {
       console.error(err);
@@ -194,7 +168,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="md:w-2/3 w-full">
+          <div className="md:w-8/4 w-full">
             {/* Loading State */}
             {loading && (
               <div className="text-center p-8 bg-gray-800 rounded border border-gray-700">
@@ -203,16 +177,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Done Message */}
-            {showDoneMessage && !loading && (
-              <div className="text-center p-8 bg-gray-800 rounded border border-gray-700">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                <div className="text-lg text-green-400">Analysis complete!</div>
-              </div>
-            )}
-
             {/* No Links Found Message */}
-            {showNoLinksMessage && !loading && !showDoneMessage && (
+            {showNoLinksMessage && !loading && (
               <div className="text-center p-8 bg-gray-800 rounded border border-gray-700">
                 <div className="text-yellow-400 text-xl mb-4">
                   Sneaky, not putting links on resume
@@ -296,7 +262,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="py-4 border-t border-gray-800 mt-8">
+      <footer className="fixed bottom-0 left-0 right-0 py-4 border-t border-gray-800 bg-gray-900">
         <div className="max-w-5xl mx-auto px-4 text-center text-gray-500 text-xs">
           © 2025 Resume Verification Tool
         </div>

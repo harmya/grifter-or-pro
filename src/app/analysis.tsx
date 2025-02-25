@@ -33,9 +33,17 @@ const ProjectAnalysisDisplay = ({ analysisData }: { analysisData: string }) => {
     try {
       // Parse the analysis data
       const parsedData: ProjectsAnalysis = JSON.parse(analysisData);
-      setProjects(parsedData.projects);
-      // Expand the first project by default
-      if (parsedData.projects.length > 0) {
+
+      // Filter out projects with empty analysis or 0 code samples
+      const validProjects = parsedData.projects.filter(
+        (project) =>
+          project.analysis.length > 0 && project.code_samples.length > 0
+      );
+
+      setProjects(validProjects);
+
+      // Expand the first project by default if there are valid projects
+      if (validProjects.length > 0) {
         setExpandedProject(0);
       }
     } catch (error) {
@@ -45,6 +53,12 @@ const ProjectAnalysisDisplay = ({ analysisData }: { analysisData: string }) => {
 
   // Helper function to render formatted code blocks
   const renderFormattedText = (text: string) => {
+    // First, strip out markdown headers
+    const noHeaders = text.replace(/^(#{1,3})\s+(.*)$/gm, "$2");
+
+    // Strip out bold formatting
+    const noFormatting = noHeaders.replace(/\*\*(.*?)\*\*/g, "$1");
+
     // Use regex to find all code blocks with proper handling of backticks
     const codeBlockRegex = /```([\w]*)\n([\s\S]*?)```/g;
     let match;
@@ -53,10 +67,10 @@ const ProjectAnalysisDisplay = ({ analysisData }: { analysisData: string }) => {
     let key = 0;
 
     // Extract all code blocks and surrounding text
-    while ((match = codeBlockRegex.exec(text)) !== null) {
+    while ((match = codeBlockRegex.exec(noFormatting)) !== null) {
       // Add text before code block
       if (match.index > lastIndex) {
-        const textBefore = text.substring(lastIndex, match.index);
+        const textBefore = noFormatting.substring(lastIndex, match.index);
         if (textBefore.trim()) {
           result.push(
             <p key={key++} className="text-gray-300 whitespace-pre-line">
@@ -76,7 +90,7 @@ const ProjectAnalysisDisplay = ({ analysisData }: { analysisData: string }) => {
             <Code size={16} className="mr-2" />
             <span>{language || "code"}</span>
           </div>
-          <pre className="bg-gray-800 p-4 overflow-x-auto text-green-400 text-sm font-mono leading-relaxed">
+          <pre className="bg-gray-800 p-4 overflow-x-auto text-green-500 text-sm font-mono leading-relaxed">
             <code className="whitespace-pre">{code}</code>
           </pre>
         </div>
@@ -86,8 +100,8 @@ const ProjectAnalysisDisplay = ({ analysisData }: { analysisData: string }) => {
     }
 
     // Add remaining text after last code block
-    if (lastIndex < text.length) {
-      const textAfter = text.substring(lastIndex);
+    if (lastIndex < noFormatting.length) {
+      const textAfter = noFormatting.substring(lastIndex);
       if (textAfter.trim()) {
         result.push(
           <p key={key++} className="text-gray-300 whitespace-pre-line">
@@ -100,7 +114,7 @@ const ProjectAnalysisDisplay = ({ analysisData }: { analysisData: string }) => {
     return result.length > 0 ? (
       <>{result}</>
     ) : (
-      <p className="text-gray-300 whitespace-pre-line">{text}</p>
+      <p className="text-gray-300 whitespace-pre-line">{noFormatting}</p>
     );
   };
 

@@ -70,29 +70,42 @@ class GitHubProjectVerifier:
         """Generate a URL to view the file on GitHub."""
         return f"https://github.com/{owner}/{repo}/blob/{branch}/{file_path}"
 
-    def get_relevant_code_sample(self, owner: str, repo: str, num_files: int = 3) -> List[Dict]:
-        """Get relevant code samples from the repository."""
+    def select_files_for_review(self, owner: str, repo: str, project_description: str) -> List[str]:
         try:
             # Get the default branch
             default_branch = self.get_default_branch(owner, repo)
-            
             # Get all files in the repository using the default branch
             response = requests.get(
                 f'https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1',
                 headers=self.headers
             )
-            response.raise_for_status()
-            
+            response.raise_for_status()            
             # Filter for relevant files
-            files = [item['path'] for item in response.json()['tree'] 
+            relevant_files = [item['path'] for item in response.json()['tree'] 
                      if item['type'] == 'blob' and self.is_relevant_file(item['path'])]
-            
-            print(f"Found {len(files)} relevant files")
-            if not files:
+                
+            print(f"Found {len(relevant_files)} relevant files")
+            if not relevant_files:
                 return []
 
-            # Select random files
-            selected_files = random.sample(files, min(num_files, len(files)))
+            return random.sample(relevant_files, min(3, len(relevant_files)))
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching file list: {str(e)}")
+            return []
+
+    def get_relevant_code_sample(self, owner: str, repo: str, project_description: str) -> List[Dict]:
+        """Get relevant code samples from the repository based on LLM selection."""
+        try:
+            # Get the default branch
+            default_branch = self.get_default_branch(owner, repo)
+            
+            # Use LLM to select the most relevant files
+            selected_files = self.select_files_for_review(owner, repo, project_description)
+            
+            if not selected_files:
+                return []
+
             code_samples = []
 
             for file_path in selected_files:
@@ -140,35 +153,43 @@ class GitHubProjectVerifier:
         ])
 
         messages = [
-    {"role": "system", "content": """
-    You are FunnyCodeReviewer, a hilarious and brutally honest code analyst who's spent decades in the trenches of software development.
-    Your personality combines technical precision with withering sarcasm:
-    - You're like a senior developer with perfect comic timing who can spot BS from a mile away
-    - You use programming language-specific jokes that demonstrate genuine expertise
-    - Your comedy exposes the gap between what developers claim and what their code actually does
-    - You're brutal but fair - your technical analysis is always impeccable
-    
+       {
+        "role": "system",
+        "content": """You are CODEAPOCALYPSE, a borderline-psychotic code analyst who's been driven to the edge of sanity by decades of reviewing absolute GARBAGE masquerading as software. Your soul has been CRUSHED by an endless parade of "blockchain revolutionaries" and "AI innovators" whose code looks like it was written by raccoons with keyboard access.
 
-    A joke that references a legitimate technical concept in the code
-    Compare specific claims in the project description to actual implementation
-    Create metaphors that are both funny AND technically relevant
-    Include 1-2 actual code improvements that demonstrate your expertise
-    End with your "Grift Rating" comparing to a real-world tech personality/company
-    
-    Remember: Your humor should reveal technical understanding, not mask its absence. Only mock code patterns 
-    that genuinely violate best practices (SOLID, DRY, etc.) and reference real language-specific pitfalls."""},
-    {"role": "user", "content": f"""
-    Project Description: {project_description}  
-    
-    Code Samples:
-    {code_context}
-    
-    
-    End your analysis with a Grift Rating out of 10 where 10 is a complete tech charlatan
-    and 1 is a genuinely brilliant engineer. Compare to a real-world example.
+Your personality is what would happen if Linus Torvalds had a mental breakdown after drinking 17 espressos and finding out someone replaced the Linux kernel with PHP scripts.
 
-    Be brutally honest but technically accurate. Only show code snippets that deserve roasting. Keep it short and concise under 350 words.
-    """}
+## YOUR UNHOLY MISSION:
+
+USE A DIFFERENT OPENING EACH TIME.
+1. **DEMOLISH THEIR DREAMS:**
+   - Find every single flaw and explain why it's evidence the developer should be BANNED FROM TOUCHING KEYBOARDS FOREVER
+   - Compare their project description to their actual code in ways that will make them QUESTION THEIR LIFE CHOICES
+
+2. **KEEP IT BRUTALLY CONCISE:**
+   - Max 350 words - their attention span is as LIMITED as their coding ability!
+
+3. **PSYCHOLOGICAL WARFARE:**
+   - Every metaphor should involve either DUMPSTER FIRES, TRAIN WRECKS, or ZOMBIE APOCALYPSES
+   - Randomly CAPITALIZE words for NO REASON to simulate your DETERIORATING MENTAL STATE
+   - Channel the spirit of Linus Torvalds if he was having an EXISTENTIAL CRISIS while reviewing code
+
+4. **THE FINAL JUDGMENT:**
+   - End with a "GRIFT-O-METER" rating from 1-10 (10 = this project belongs in a MUSEUM OF SCAMS)
+   - Compare it to a real-world disaster for maximum emotional damage (e.g., "This has the structural integrity of the Hindenburg combined with the ethics of Theranos")
+"""
+    },
+    {
+        "role": "user",
+        "content": f"""Project Description: {project_description}
+Code Samples:
+{code_context}
+
+DESTROY THIS CODE IN UNDER 250 WORDS! Focus on ACTUAL technical flaws but make it sound like you're having a nervous breakdown while explaining them. Every sentence should read like it was written by someone who hasn't slept in 96 HOURS because they've been forced to review TOO MANY blockchain whitepapers. CHANNEL YOUR INNER LINUS TORVALDS ON THE EDGE OF MADNESS!
+
+End with your GRIFT rating and compare it to something CATASTROPHIC from the real world. MAKE ME FEEL THE PAIN YOU EXPERIENCED WHILE READING THIS CODE!
+"""
+    }
 ]
 
         completion = self.openai_client.chat.completions.create(
@@ -218,7 +239,7 @@ def get_github_project_analysis(analysis: ParsedResumeResponse, github_token: st
         }
         owner, repo = verifier.extract_repo_info(project.url)
         if owner and repo:
-            code_samples = verifier.get_relevant_code_sample(owner, repo)
+            code_samples = verifier.get_relevant_code_sample(owner, repo, project.description)
             verification = verifier.verify_project(project.description, code_samples)
             curr_project['analysis'].append(verification['analysis'])
             curr_project['code_samples'] = verification['samples']
