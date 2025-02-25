@@ -83,7 +83,7 @@ class GitHubProjectVerifier:
             # Filter for relevant files
             relevant_files = [item['path'] for item in response.json()['tree'] 
                      if item['type'] == 'blob' and self.is_relevant_file(item['path'])]
-                
+
             print(f"Found {len(relevant_files)} relevant files")
             if not relevant_files:
                 return []
@@ -214,22 +214,15 @@ def get_github_project_analysis(analysis: ParsedResumeResponse, github_token: st
     verifier = GitHubProjectVerifier(github_token, openai_api_key)
     # Parse GitHub projects from analysis
     projects = []
-    print("ANALYSIS")
-    print(analysis)
     
     for project in analysis.projects:
         project = GitHubProject(project.name, project.url, project.description)
         projects.append(project)
 
-    print("PROJECTS")
-    print(projects) 
-
     analysis = {
         'projects': []
     }
 
-    print("PROJECTS")
-    print(projects)
 
     for project in projects:
         curr_project = {
@@ -249,5 +242,4 @@ def get_github_project_analysis(analysis: ParsedResumeResponse, github_token: st
 
     # convert to json string
     json_analysis = json.dumps(analysis)
-    print(json_analysis)
     return json_analysis
